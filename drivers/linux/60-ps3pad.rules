@@ -1,0 +1,18 @@
+# ps3pad: allow the logged-in user to talk to DualShock 3 / SIXAXIS
+# controllers and to create virtual HID devices through /dev/uhid.
+#
+# Install with:
+#   sudo install -m 0644 60-ps3pad.rules /etc/udev/rules.d/
+#   sudo udevadm control --reload-rules
+#   sudo udevadm trigger
+#
+# TAG+="uaccess" gives an ACL to the active local session. If your system
+# does not run systemd-logind, replace it with GROUP="plugdev" and add your
+# user to the plugdev group instead.
+
+# Sony DualShock 3 / SIXAXIS, USB (054c:0268).
+KERNEL=="hidraw*", ATTRS{idVendor}=="054c", ATTRS{idProduct}=="0268", MODE="0660", TAG+="uaccess"
+
+# Some clones report the same IDs through a different HID parent; keep the
+# rule above as the primary match and grant uhid separately.
+KERNEL=="uhid", MODE="0660", TAG+="uaccess"

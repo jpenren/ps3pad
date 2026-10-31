@@ -1,0 +1,29 @@
+[package]
+name = "ps3pad"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "CLI, daemon and GUI tester for Sony DualShock 3 controllers"
+
+[[bin]]
+name = "ps3pad"
+path = "src/main.rs"
+
+[dependencies]
+ps3pad-core = { path = "../ps3pad-core" }
+ps3pad-platform = { path = "../ps3pad-platform" }
+anyhow.workspace = true
+clap.workspace = true
+env_logger.workspace = true
+log.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+[features]
+default = ["gui"]
+gui = ["dep:eframe"]
+
+[dependencies.eframe]
+workspace = true
+optional = true

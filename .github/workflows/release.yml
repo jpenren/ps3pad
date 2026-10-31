@@ -20,7 +20,7 @@ jobs:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             artifact: ps3pad-linux-x86_64.tar.gz
-            cross_targets: x86_64-pc-windows-msvc x86_64-apple-darwin aarch64-apple-darwin
+            cross_targets: x86_64-pc-windows-gnu x86_64-apple-darwin aarch64-apple-darwin
 
           # macOS Intel
           - os: macos-latest
@@ -76,11 +76,11 @@ jobs:
           tar czf ps3pad-linux-udev.tar.gz -C dist 60-ps3pad.rules
 
       - name: Package Windows (cross from Linux)
-        if: runner.os == 'Linux' && contains(matrix.cross_targets, 'x86_64-pc-windows-msvc')
+        if: runner.os == 'Linux' && contains(matrix.cross_targets, 'x86_64-pc-windows-gnu')
         shell: bash
         run: |
           mkdir -p dist
-          cp target/x86_64-pc-windows-msvc/release/ps3pad.exe dist/
+          cp target/x86_64-pc-windows-gnu/release/ps3pad.exe dist/
           cp -r drivers/windows dist/ 2>/dev/null || true
           zip -r ${{ matrix.artifact }} dist/*
 

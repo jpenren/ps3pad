@@ -1,0 +1,142 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Linux nativo + cross Windows/macOS
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact: ps3pad-linux-x86_64.tar.gz
+            cross_targets: x86_64-pc-windows-msvc x86_64-apple-darwin aarch64-apple-darwin
+
+          # Windows nativo (para driver KMDF si se añade msbuild)
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact: ps3pad-windows-x86_64.zip
+            cross_targets: ''
+
+          # macOS Intel
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            artifact: ps3pad-macos-x86_64.tar.gz
+            cross_targets: ''
+
+          # macOS Apple Silicon
+          - os: macos-14
+            target: aarch64-apple-darwin
+            artifact: ps3pad-macos-aarch64.tar.gz
+            cross_targets: ''
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust (stable + targets)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.cross_targets }}
+
+      - name: Install system deps (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libudev-dev pkg-config \
+            gcc-mingw-w64-x86-64 \
+            clang lld llvm
+
+      - name: Install cross (Linux -> Windows/macOS)
+        if: runner.os == 'Linux' && matrix.cross_targets != ''
+        uses: taiki-e/install-action@cross
+
+      - name: Build native
+        run: |
+          cargo build --release --target ${{ matrix.target }} --workspace --bins
+
+      - name: Build cross targets (from Linux)
+        if: runner.os == 'Linux' && matrix.cross_targets != ''
+        run: |
+          for t in ${{ matrix.cross_targets }}; do
+            cross build --release --target $t --workspace --bins
+          done
+
+      - name: Package Linux
+        if: runner.os == 'Linux' && matrix.target == 'x86_64-unknown-linux-gnu'
+        run: |
+          mkdir -p dist
+          cp target/${{ matrix.target }}/release/ps3pad dist/
+          tar czf ${{ matrix.artifact }} -C dist ps3pad
+          cp drivers/linux/60-ps3pad.rules dist/
+          tar czf ps3pad-linux-udev.tar.gz -C dist 60-ps3pad.rules
+
+      - name: Package Windows (cross from Linux)
+        if: runner.os == 'Linux' && contains(matrix.cross_targets, 'x86_64-pc-windows-msvc')
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp target/x86_64-pc-windows-msvc/release/ps3pad.exe dist/
+          cp -r drivers/windows dist/ 2>/dev/null || true
+          zip -r ${{ matrix.artifact }} dist/*
+
+      - name: Package Windows (native)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp target/${{ matrix.target }}/release/ps3pad.exe dist/
+          cp -r drivers/windows dist/ 2>/dev/null || true
+          7z a ${{ matrix.artifact }} dist/*
+
+      - name: Package macOS
+        if: runner.os == 'macOS'
+        run: |
+          mkdir -p dist
+          cp target/${{ matrix.target }}/release/ps3pad dist/
+          tar czf ${{ matrix.artifact }} -C dist ps3pad
+
+      - name: Create universal macOS binary (Intel + ARM)
+        if: runner.os == 'macOS' && matrix.target == 'aarch64-apple-darwin'
+        run: |
+          lipo -create \
+            target/x86_64-apple-darwin/release/ps3pad \
+            target/aarch64-apple-darwin/release/ps3pad \
+            -output dist/ps3pad-universal
+          tar czf ps3pad-macos-universal.tar.gz -C dist ps3pad-universal
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: |
+            ${{ matrix.artifact }}
+            ps3pad-linux-udev.tar.gz
+            ps3pad-macos-universal.tar.gz
+          retention-days: 7
+
+  release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*
+          generate_release_notes: true

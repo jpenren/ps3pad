@@ -30,19 +30,12 @@ jobs:
             cross_targets: ''
             rust_targets: ''
 
-          # macOS Intel
-          - os: macos-latest
-            target: x86_64-apple-darwin
-            artifact: ps3pad-macos-x86_64.tar.gz
-            cross_targets: ''
-            rust_targets: x86_64-apple-darwin
-
-          # macOS Apple Silicon
+          # macOS: un solo job en macos-15 (ARM) que compila AMBOS targets vía Rosetta 2
           - os: macos-15
-            target: aarch64-apple-darwin
-            artifact: ps3pad-macos-aarch64.tar.gz
+            target: universal
+            artifact: ps3pad-macos-universal.tar.gz
             cross_targets: ''
-            rust_targets: aarch64-apple-darwin
+            rust_targets: x86_64-apple-darwin aarch64-apple-darwin
 
     steps:
       - uses: actions/checkout@v4
@@ -58,7 +51,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             libudev-dev pkg-config \
-            gcc-mingw-w64-x86-64 \
+            gcc-mingw-w64-x86_64 \
             clang lld llvm
 
       - name: Install cross (Linux -> Windows/macOS)
@@ -66,8 +59,15 @@ jobs:
         uses: taiki-e/install-action@cross
 
       - name: Build native
+        if: matrix.target != 'universal'
         run: |
           cargo build --release --target ${{ matrix.target }} --workspace --bins
+
+      - name: Build both macOS targets (on macos-15)
+        if: matrix.target == 'universal'
+        run: |
+          cargo build --release --target x86_64-apple-darwin --workspace --bins
+          cargo build --release --target aarch64-apple-darwin --workspace --bins
 
       - name: Build cross targets (from Linux)
         if: runner.os == 'Linux' && matrix.cross_targets != ''
@@ -103,21 +103,21 @@ jobs:
           cp -r drivers/windows dist/ 2>/dev/null || true
           7z a ${{ matrix.artifact }} dist/*
 
-      - name: Package macOS
-        if: runner.os == 'macOS'
+      - name: Package macOS individual targets + universal
+        if: runner.os == 'macOS' && matrix.target == 'universal'
         run: |
           mkdir -p dist
-          cp target/${{ matrix.target }}/release/ps3pad dist/
-          tar czf ${{ matrix.artifact }} -C dist ps3pad
-
-      - name: Create universal macOS binary (Intel + ARM)
-        if: runner.os == 'macOS' && matrix.target == 'aarch64-apple-darwin'
-        run: |
+          # Individual binaries
+          cp target/x86_64-apple-darwin/release/ps3pad dist/ps3pad-x86_64
+          cp target/aarch64-apple-darwin/release/ps3pad dist/ps3pad-aarch64
+          tar czf ps3pad-macos-x86_64.tar.gz -C dist ps3pad-x86_64
+          tar czf ps3pad-macos-aarch64.tar.gz -C dist ps3pad-aarch64
+          # Universal binary
           lipo -create \
             target/x86_64-apple-darwin/release/ps3pad \
             target/aarch64-apple-darwin/release/ps3pad \
             -output dist/ps3pad-universal
-          tar czf ps3pad-macos-universal.tar.gz -C dist ps3pad-universal
+          tar czf ${{ matrix.artifact }} -C dist ps3pad-universal
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -126,6 +126,8 @@ jobs:
           path: |
             ${{ matrix.artifact }}
             ps3pad-linux-udev.tar.gz
+            ps3pad-macos-x86_64.tar.gz
+            ps3pad-macos-aarch64.tar.gz
             ps3pad-macos-universal.tar.gz
           retention-days: 7
 

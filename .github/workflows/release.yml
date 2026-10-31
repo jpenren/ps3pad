@@ -21,24 +21,28 @@ jobs:
             target: x86_64-unknown-linux-gnu
             artifact: ps3pad-linux-x86_64.tar.gz
             cross_targets: x86_64-apple-darwin aarch64-apple-darwin
+            rust_targets: x86_64-apple-darwin aarch64-apple-darwin
 
           # Windows nativo (MSVC - compila driver KMDF + app)
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             artifact: ps3pad-windows-x86_64.zip
             cross_targets: ''
+            rust_targets: ''
 
           # macOS Intel
           - os: macos-latest
             target: x86_64-apple-darwin
             artifact: ps3pad-macos-x86_64.tar.gz
             cross_targets: ''
+            rust_targets: x86_64-apple-darwin
 
           # macOS Apple Silicon
           - os: macos-15
             target: aarch64-apple-darwin
             artifact: ps3pad-macos-aarch64.tar.gz
             cross_targets: ''
+            rust_targets: aarch64-apple-darwin
 
     steps:
       - uses: actions/checkout@v4
@@ -46,7 +50,7 @@ jobs:
       - name: Install Rust (stable + targets)
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.cross_targets }}
+          targets: ${{ matrix.rust_targets }}
 
       - name: Install system deps (Linux)
         if: runner.os == 'Linux'

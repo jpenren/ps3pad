@@ -22,12 +22,6 @@ jobs:
             artifact: ps3pad-linux-x86_64.tar.gz
             cross_targets: x86_64-pc-windows-msvc x86_64-apple-darwin aarch64-apple-darwin
 
-          # Windows nativo (para driver KMDF si se añade msbuild)
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
-            artifact: ps3pad-windows-x86_64.zip
-            cross_targets: ''
-
           # macOS Intel
           - os: macos-latest
             target: x86_64-apple-darwin
@@ -89,15 +83,6 @@ jobs:
           cp target/x86_64-pc-windows-msvc/release/ps3pad.exe dist/
           cp -r drivers/windows dist/ 2>/dev/null || true
           zip -r ${{ matrix.artifact }} dist/*
-
-      - name: Package Windows (native)
-        if: runner.os == 'Windows'
-        shell: bash
-        run: |
-          mkdir -p dist
-          cp target/${{ matrix.target }}/release/ps3pad.exe dist/
-          cp -r drivers/windows dist/ 2>/dev/null || true
-          7z a ${{ matrix.artifact }} dist/*
 
       - name: Package macOS
         if: runner.os == 'macOS'

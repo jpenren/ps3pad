@@ -1,4 +1,4 @@
-# ps3pad
+# PS3Pad
 
 Self-contained Sony DualShock 3 / SIXAXIS driver and tester for Linux, Windows, and macOS.
 
@@ -91,6 +91,12 @@ echo '{"type":"status"}' | socat - UNIX-CONNECT:/tmp/ps3pad.sock
 # Graphical tester
 ps3pad gui
 ```
+
+## GUI Screenshot
+
+![ps3pad GUI](docs/gui-screenshot.svg)
+
+*The graphical tester (`ps3pad gui`) shows live controller state: button grid, analog stick positions, pressure bars for all 12 analog buttons, battery level with charging state, accelerometer/tilt/gyro readouts, LED player indicators, rumble sliders, virtual-pad toggle, and a scrolling report log.*
 
 ## Architecture
 

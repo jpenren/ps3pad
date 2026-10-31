@@ -94,7 +94,7 @@ ps3pad gui
 
 ## GUI Screenshot
 
-![ps3pad GUI](docs/gui-screenshot.svg)
+![ps3pad GUI](docs/gui-screenshot.png)
 
 *The graphical tester (`ps3pad gui`) shows live controller state: button grid, analog stick positions, pressure bars for all 12 analog buttons, battery level with charging state, accelerometer/tilt/gyro readouts, LED player indicators, rumble sliders, virtual-pad toggle, and a scrolling report log.*
 

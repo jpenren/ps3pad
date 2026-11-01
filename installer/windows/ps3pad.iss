@@ -21,7 +21,7 @@
 #define MyAppPublisher "ps3pad contributors"
 #define MyAppURL "https://github.com/jpenren/ps3pad"
 #define MyAppExeName "ps3pad.exe"
-#define MyAppId "{FEAF2AC6-B977-4155-A725-55EEFAB2A430}"
+#define MyAppId "FEAF2AC6-B977-4155-A725-55EEFAB2A430"
 
 [Setup]
 AppId={#MyAppId}

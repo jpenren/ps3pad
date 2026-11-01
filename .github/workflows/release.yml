@@ -121,8 +121,22 @@ jobs:
         shell: pwsh
         run: |
           Write-Host "Installing Inno Setup 6..."
-          choco install innosetup -y
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $isccPath = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $isccPath)) {
+            Write-Host "Downloading Inno Setup installer..."
+            $installer = Join-Path $env:TEMP "is-6.exe"
+            Invoke-WebRequest -Uri "https://jrsoftware.org/files/is-6.exe" -OutFile $installer
+            Start-Process -FilePath $installer -ArgumentList "/SP-", "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART" -Wait
+            if (-not (Test-Path $isccPath)) {
+              # Try alternative path
+              $isccPath = (Get-ChildItem "${env:ProgramFiles(x86)}\Inno Setup*\ISCC.exe" |
+                Select-Object -First 1).FullName
+            }
+          }
+          if (-not (Test-Path $isccPath)) {
+            throw "ISCC.exe (Inno Setup) not found after installation"
+          }
+          Write-Host "Inno Setup found at: $isccPath"
 
       - name: Build Windows installer (Inno Setup)
         if: runner.os == 'Windows'

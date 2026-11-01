@@ -17,6 +17,9 @@ pub mod virtual_pad;
 #[cfg(target_os = "linux")]
 mod linux;
 
+#[cfg(target_os = "windows")]
+mod windows;
+
 pub use device::{Controller, DeviceInfo, InitInfo};
 pub use error::PlatformError;
 pub use virtual_pad::{VirtualPad, VirtualPadEvent};

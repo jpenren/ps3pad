@@ -7,17 +7,21 @@ Self-contained Sony DualShock 3 / SIXAXIS driver and tester for Linux, Windows, 
 - **Protocol support** (`ps3pad-core`): Full decode of USB/Bluetooth input reports (buttons, sticks, pressure, battery, accelerometer, gyro), LED/rumble output reports, pairing, and the official HID report descriptor.
 - **Hybrid architecture** (`ps3pad-platform`):
   - Linux: Direct `/dev/hidraw*` access + virtual gamepad via `/dev/uhid` (no hidapi, no libudev).
-  - Windows: Native SetupAPI/HidD/overlapped I/O for physical controllers; KMDF/VHF kernel driver for virtual gamepad.
+  - Windows: XInput via the signed DsHidMini UMDF driver (no kernel-mode driver needed; Windows exposes a real XInput controller).
   - macOS: IOKit/IOHIDManager FFI for physical controllers; `IOHIDUserDevice` (user-space, DriverKit-free) for virtual gamepad.
 - **Applications** (`ps3pad`):
   - CLI: `list`, `dump`, `doctor`, `led`, `pair`, `uhid-test`.
-  - Daemon: Bridges physical controller → virtual gamepad with Unix-socket JSON control.
+  - Daemon: Bridges physical controller → virtual gamepad (Linux/macOS). On Windows, DsHidMini already exposes a native XInput device, so no virtual pad is needed.
   - GUI: Native egui tester with live visualization of buttons, sticks, pressure, battery, motion, and rumble/LED controls.
 
 ## Requirements
 
 - **Linux**: Kernel ≥ 5.10 (`hidraw`, `uhid` modules), udev rules for non-root access (provided).
-- **Windows**: Windows 10+ (VHF requires kernel-mode driver; user-mode VHF is not supported). Test-signing or attestation signing required for driver installation.
+- **Windows**: Windows 10+. The installer bundles the signed DsHidMini UMDF driver
+  (BSD-3-Clause) which replaces `hidusb` for `USB\VID_054C&PID_0268` and exposes
+  the DualShock 3 as a native XInput gamepad. No kernel-mode driver, no
+  test-signing, and no ViGEmBus are needed: Windows already shows a real XInput
+  controller that games recognise natively.
 - **macOS**: macOS 12+ (Monterey), Xcode command-line tools. `IOHIDUserDevice` runs in-process on a CFRunLoop thread; no DriverKit entitlements needed.
 - **Rust**: 1.85+ (MSRV tracked in workspace).
 
@@ -71,8 +75,11 @@ Download and run the installer wizard:
 
 [`ps3pad-windows-x86_64-setup.exe`](https://github.com/jpenren/ps3pad/releases/latest/download/ps3pad-windows-x86_64-setup.exe)
 
-The wizard installs the GUI and CLI, lets you choose a per-user or all-users
-installation, and can create a desktop shortcut.
+The wizard installs the CLI and GUI, and silently installs the DsHidMini
+driver package (elevated) so the connected DualShock 3 is bound to DsHidMini
+and exposed as a native XInput gamepad. After installation, the controller
+works in games immediately — no virtual gamepad, no ViGEmBus, no extra
+configuration needed.
 
 ```powershell
 Invoke-WebRequest `
@@ -82,22 +89,46 @@ Invoke-WebRequest `
 ```
 
 Windows SmartScreen may warn because the installer is not code-signed; choose
-**More info → Run anyway**. The virtual gamepad still needs the KMDF/VHF
-driver; see [Windows driver (KMDF/VHF)](#windows-driver-kmdfvhf).
+**More info → Run anyway**.
+
+Verify the install with:
+
+```powershell
+.\ps3pad.exe list
+.\ps3pad.exe doctor
+.\ps3pad.exe dump --seconds 5
+```
 
 #### Portable ZIP
 
 If you prefer not to install anything, download and extract
 [`ps3pad-windows-x86_64.zip`](https://github.com/jpenren/ps3pad/releases/latest/download/ps3pad-windows-x86_64.zip),
-then run `dist\ps3pad.exe` from the extracted folder:
+then run `ps3pad.exe` from the extracted folder. You must install the DsHidMini
+driver separately (see below) before the controller will work:
 
 ```powershell
 Invoke-WebRequest `
   -Uri https://github.com/jpenren/ps3pad/releases/latest/download/ps3pad-windows-x86_64.zip `
   -OutFile ps3pad-windows-x86_64.zip
 Expand-Archive .\ps3pad-windows-x86_64.zip -DestinationPath .
-.\dist\ps3pad.exe list
+.\ps3pad.exe list
 ```
+
+#### Driver-only installation (portable ZIP users)
+
+The DsHidMini driver package must be installed elevated once:
+
+```powershell
+# Requires administrator rights.
+pnputil /add-driver <path-to>\igfilter.inf
+pnputil /add-driver <path-to>\dshidmini.inf
+```
+
+The driver package is available from the
+[DsHidMini releases](https://github.com/nefarius/DsHidMini/releases) or from
+`drivers/dshidmini/` in this repository. After installation, reconnect the
+controller and it will appear as an XInput device.
+
 
 ### macOS installation
 
@@ -141,19 +172,23 @@ cargo check --target x86_64-apple-darwin --workspace
 cargo check --target aarch64-apple-darwin --workspace
 ```
 
-### Windows driver (KMDF/VHF)
+### Windows driver (DsHidMini)
 
-Located in `drivers/windows/`:
+On Windows the DualShock 3 cannot be driven by the stock `hidusb` driver: the
+controller requires a `SET_REPORT` with report ID `0xF4` that is not in its HID
+descriptor, so `hidusb` rejects it with Win32 error 87. ps3pad therefore uses
+the signed **DsHidMini** UMDF driver
+([Nefarius Software Solutions, BSD-3-Clause](https://github.com/nefarius/DsHidMini))
+which replaces `hidusb` for `USB\VID_054C&PID_0268` and defaults to XInput
+mode (mode 5). Windows then exposes the controller as a genuine XInput gamepad
+(`VID_045E&PID_02FF`) that works in games natively.
 
-1. Open `drivers/windows/ps3padvhf.vcxproj` in Visual Studio 2022 with WDK.
-2. Build the driver (`x64` / `Release`).
-3. Install with `devcon` or `pnputil` (requires test-signing or attestation):
-   ```cmd
-   devcon install ps3padvhf.inf "Root\Ps3padVhf"
-   ```
-4. The driver creates `\DosDevices\Ps3padVhf` for the Rust virtual-pad backend.
+The driver package is bundled in the installer and installed elevated on first
+run. Driver files (INF, CAT, DLL, SYS) plus licenses are shipped under
+`installer/windows/drivers/dshidmini/`. The DsHidMini MSI is fetched and
+extracted by `installer/windows/fetch-dshidmini.ps1` during release builds.
 
-See `drivers/windows/BUILD.md` for detailed instructions.
+No test-signing, attestation signing, or ViGEmBus is required.
 
 ### Windows installer (Inno Setup)
 

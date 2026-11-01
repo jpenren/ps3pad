@@ -8,10 +8,8 @@ ps3pad/
 │   ├── ps3pad-core/      # Protocol codec, no I/O, no platform code
 │   ├── ps3pad-platform/  # Transport + virtual HID backends (Linux/Windows/macOS)
 │   └── ps3pad/           # CLI, daemon, GUI
-├── drivers/
-│   ├── linux/            # udev rule
-│   ├── windows/          # KMDF/VHF driver (C, VS/WDK project)
-│   └── macos/            # (no driver needed; user-space IOHIDUserDevice)
+├── installer/
+│   └── windows/          # Inno Setup installer + DsHidMini driver package
 ├── docs/
 │   ├── ARCHITECTURE.md   # This file
 │   ├── PROTOCOL.md       # Wire format
@@ -83,16 +81,33 @@ pub struct VirtualPad {
 - **sysfs.rs**: Scans `/sys/class/hidraw/hidraw*/device/uevent` for `HID_ID=bbbb:vvvv:pppp`. Matches VID 0x054c, PID 0x0268. Bus 3 → USB, 5 → Bluetooth.
 - **uhid.rs**: Opens `/dev/uhid`. `CREATE2` event (280-byte header + descriptor). `INPUT2` for reports. Parses `OUTPUT`, `GET_REPORT`, `SET_REPORT`, `START`/`STOP`/`OPEN`/`CLOSE`/`DESTROY`. Auto-replies to feature requests.
 
-#### Windows implementation (planned, `src/windows/`)
+#### Windows implementation (`src/windows/`)
 
-- **Physical**: SetupAPI `GUID_DEVINTERFACE_HID` enumeration → `HidD_GetAttributes` → match VID/PID. `CreateFile` overlapped. `HidD_GetPreparsedData` + `HidP_GetCaps` for caps. Overlapped `ReadFile` for interrupt IN (includes report ID). `WriteFile` for interrupt OUT (LED/rumble). `HidD_GetFeature`/`HidD_SetFeature` for feature reports (buffers include report ID).
-- **Virtual**: Talks to KMDF driver at `\\.\Ps3padVhf` via `DeviceIoControl` with custom IOCTLs (type 0x8330):
-  - `PS3PAD_CREATE` (0x800): in=descriptor, out=handle
-  - `PS3PAD_INPUT` (0x801): in=report bytes
-  - `PS3PAD_READ_OUTPUT` (0x802): out=queued output report
-  - `PS3PAD_DESTROY` (0x803)
-  - `PS3PAD_STATUS` (0x804)
-- Driver (`drivers/windows/ps3padvhf.c`): KMDF + VHF. `VhfCreate` with `EvtVhfReadyForNextReadReport=NULL` (VHF buffers), `EvtVhfAsyncOperationWriteReport` for output. Control device for IOCTLs.
+On Windows the physical DualShock 3 is **not** driven by ps3pad directly. The
+stock `hidusb` driver rejects the DS3's `SET_REPORT` with report ID `0xF4`
+(error 87) because that report is not in the HID descriptor, so a kernel-mode
+or filter driver is required. ps3pad uses the signed **DsHidMini** UMDF driver
+(Nefarius Software Solutions, BSD-3-Clause) which replaces `hidusb` for
+`USB\VID_054C&PID_0268` and defaults to XInput mode (mode 5). Windows then
+exposes the controller as a genuine XInput gamepad (`VID_045E&PID_02FF`)
+that games recognise natively.
+
+- **Physical**: XInput API (`XInputGetState`/`XInputSetState` from `xinput1_4.dll`,
+  loaded dynamically at runtime). Slots 0–3 are probed; each connected slot
+  maps to a synthetic 49-byte DualShock 3 report so `InputReport::parse` can
+  decode buttons, sticks, triggers, and battery. Rumble/LEDs are routed through
+  `XInputSetState`. Feature reports (`0xf2`/`0xf4`/`0xf5`) are unsupported —
+  DsHidMini already keeps the controller in full report mode.
+- **Virtual**: None. DsHidMini already exposes a real XInput device, so no
+  virtual gamepad, no ViGEmBus, and no KMDF/VHF driver are needed.
+
+`Controller::discover()` probes XInput slots 0–3 and returns one `DeviceInfo`
+per connected slot. `Controller::open()` validates the slot with
+`XInputGetState`. `Controller::read_raw()` returns a synthetic DS3 report.
+`Controller::write_output()` converts an `OutputReport` to XInput vibration.
+
+DLL declarations use manual `#[link_name]` FFI (no `windows-sys`) to avoid
+import-library tooling issues with the GNU Rust toolchain.
 
 #### macOS implementation (planned, `src/macos/`)
 
@@ -108,20 +123,24 @@ pub struct VirtualPad {
 ## Data flow
 
 ```
-Physical DS3 (USB/BT)
+Physical DS3 (USB)
         │
         ▼
-ps3pad-platform (hidraw / SetupAPI / IOKit)
-        │  read_raw() → 49 bytes
+DsHidMini driver (replaces hidusb)
+        │  exposes as XInput device (VID 045E, PID 02FF)
+        ▼
+ps3pad-platform (XInput: XInputGetState/XInputSetState)
+        │  read_raw() → synthetic 49-byte DS3 report
         ▼
 ps3pad-core: InputReport::parse()
         │
         ▼
 Daemon / GUI
         │
-        ├─► Virtual pad: send_input() → ps3pad-platform (uhid / VHF / IOHIDUserDevice)
+        ├─► (Windows: no virtual pad needed — DsHidMini already exposes XInput)
+        │    (Linux/macOS: Virtual pad: send_input() → uhid / IOHIDUserDevice)
         │
-        └─► OutputReport (LED/rumble) → to_bytes() → write_output()
+        └─► OutputReport (LED/rumble) → to_bytes() → write_output() → XInputSetState
 ```
 
 ## Virtual HID descriptor (generic gamepad)
@@ -137,12 +156,17 @@ Daemon / GUI
 
 | Bus (Linux) | Windows | macOS | ps3pad-core enum |
 |-------------|---------|-------|------------------|
-| USB (3)     | HID over USB | IOKit USB | `Connection::Usb` |
+| USB (3)     | XInput (via DsHidMini) | IOKit USB | `Connection::Usb` |
 | Bluetooth (5)| HID over BT | IOKit BT | `Connection::Bluetooth` |
 
+On Windows, Bluetooth is not yet supported by ps3pad; DsHidMini handles both
+USB and Bluetooth DS3 controllers, but ps3pad's XInput backend only reports
+`Connection::Usb`.
+
 Initialization handshake differs:
-- USB: GET 0xf2 (17B) → GET 0xf5 (8B) → 1-byte interrupt write
-- Bluetooth: SET 0xf4 `[0x42,0x03,0x00,0x00]`
+- USB/Linux/macOS: GET 0xf2 (17B) → GET 0xf5 (8B) → 1-byte interrupt write
+- Bluetooth/Linux/macOS: SET 0xf4 `[0x42,0x03,0x00,0x00]`
+- Windows (DsHidMini): no handshake needed — DsHidMini keeps the controller streaming
 
 ## Error handling
 

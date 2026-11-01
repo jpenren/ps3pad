@@ -68,19 +68,26 @@ fn now_ms() -> u128 {
 
 pub(crate) fn run(mut args: DaemonArgs) -> Result<()> {
     let mut info = select_device(args.device.as_deref())?;
-    let mut pad = if args.no_virtual {
-        None
-    } else {
-        Some(VirtualPad::create_default().context("cannot create virtual gamepad")?)
-    };
-
-    if pad.is_some() {
-        println!(
-            "virtual gamepad: {} ({:04x}:{:04x})",
-            ps3pad_core::GENERIC_GAMEPAD_NAME,
-            ps3pad_core::VIRTUAL_VENDOR_ID,
-            ps3pad_core::VIRTUAL_PRODUCT_ID
-        );
+    let mut pad: Option<VirtualPad> = None;
+    #[cfg(not(windows))]
+    {
+        if !args.no_virtual {
+            pad = Some(
+                VirtualPad::create_default()
+                    .context("cannot create virtual gamepad")?,
+            );
+            println!(
+                "virtual gamepad: {} ({:04x}:{:04x})",
+                ps3pad_core::GENERIC_GAMEPAD_NAME,
+                ps3pad_core::VIRTUAL_VENDOR_ID,
+                ps3pad_core::VIRTUAL_PRODUCT_ID
+            );
+        }
+    }
+    #[cfg(windows)]
+    {
+        let _ = args.no_virtual;
+        println!("Windows: DsHidMini exposes the DS3 as a native XInput device; no virtual pad needed.");
     }
 
     let status = Arc::new(Mutex::new(Status {
@@ -125,7 +132,6 @@ pub(crate) fn run(mut args: DaemonArgs) -> Result<()> {
             status.connected = false;
         }
 
-        // The hidraw node can change after a reconnect, so rediscover.
         thread::sleep(Duration::from_secs(1));
         match select_device(args.device.as_deref().or(Some(info.path.as_str()))) {
             Ok(found) => info = found,
@@ -137,8 +143,14 @@ pub(crate) fn run(mut args: DaemonArgs) -> Result<()> {
                 }
             },
         }
-        if pad.is_none() && !args.no_virtual {
-            pad = Some(VirtualPad::create_default().context("cannot recreate virtual gamepad")?);
+        #[cfg(not(windows))]
+        {
+            if pad.is_none() && !args.no_virtual {
+                pad = Some(
+                    VirtualPad::create_default()
+                        .context("cannot recreate virtual gamepad")?,
+                );
+            }
         }
     }
 }

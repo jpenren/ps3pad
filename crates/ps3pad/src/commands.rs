@@ -178,33 +178,143 @@ fn format_report(report: &InputReport, elapsed: Duration) -> String {
 
 pub fn doctor(json_output: bool) -> Result<()> {
     let devices = Controller::discover().context("cannot enumerate controllers")?;
-    let uhid = check_uhid();
-    let hidraw_count = count_hidraw_nodes();
-    let module_loaded =
-        Path::new("/sys/module/hid_sony").exists() || Path::new("/sys/module/sony").exists();
-    let udev_rule = udev_rule_path();
     let platform = format!("{} {}", std::env::consts::OS, std::env::consts::ARCH);
 
-    if json_output {
-        let checks = json!({
-            "platform": platform,
-            "hidraw_nodes": hidraw_count,
-            "supported_controllers": devices.len(),
-            "uhid": {
-                "present": uhid.present,
-                "readable": uhid.readable,
-                "writable": uhid.writable,
+    #[cfg(windows)]
+    fn windows_checks(devices: &[ps3pad_platform::DeviceInfo]) -> (Vec<(&'static str, String)>, Vec<String>) {
+        use std::process::Command;
+        let mut checks: Vec<(&'static str, String)> = Vec::new();
+        let mut hints: Vec<String> = Vec::new();
+
+        // Check that DsHidMini-backed controllers appear as XInput devices.
+        let dshidmini = devices.iter().any(|d| d.vendor_id == 0x054c && d.product_id == 0x0268);
+        checks.push((
+            "DsHidMini driver",
+            if dshidmini {
+                "installed (DS3 exposed as XInput)".to_string()
+            } else {
+                "not detected (install the DsHidMini driver package)".to_string()
             },
-            "hid_sony_module": module_loaded,
-            "udev_rule": udev_rule.as_ref().map(|path| path.display().to_string()),
-        });
-        println!("{}", serde_json::to_string_pretty(&checks)?);
-        return Ok(());
+        ));
+        if !dshidmini {
+            hints.push(r"Install the DsHidMini driver package (signed UMDF driver for USB\VID_054C&PID_0268).".to_string());
+        }
+
+        // Check that the key services are running.
+        for service in ["nssmkig", "mshidumdf", "WUDFRd"] {
+            let output = Command::new("sc.exe")
+                .args(["query", service])
+                .output();
+            let running = output
+                .map(|o| String::from_utf8_lossy(&o.stdout).contains("RUNNING"))
+                .unwrap_or(false);
+            checks.push((
+                service,
+                if running { "running".to_string() } else { "not running".to_string() },
+            ));
+            if !running {
+                hints.push(format!("Service {service} is not running."));
+            }
+        }
+
+        (checks, hints)
+    }
+
+    #[cfg(not(windows))]
+    fn linux_checks() -> (Vec<(&'static str, String)>, Vec<String>) {
+        use std::path::Path;
+        use std::fs;
+
+        let uhid = check_uhid();
+        let hidraw_count = count_hidraw_nodes();
+        let module_loaded =
+            Path::new("/sys/module/hid_sony").exists() || Path::new("/sys/module/sony").exists();
+        let udev_rule = udev_rule_path();
+
+        let mut checks: Vec<(&'static str, String)> = Vec::new();
+        checks.push(("hidraw nodes", hidraw_count.to_string()));
+        checks.push((
+            "uhid",
+            match (uhid.present, uhid.readable, uhid.writable) {
+                (false, _, _) => "MISSING (load the uhid module)".to_string(),
+                (true, true, true) => "present, read/write".to_string(),
+                (true, true, false) => "present, read-only (check permissions)".to_string(),
+                (true, false, _) => "present, not readable (check permissions)".to_string(),
+            },
+        ));
+        checks.push((
+            "hid_sony module",
+            if module_loaded {
+                "loaded".to_string()
+            } else {
+                "not loaded (optional)".to_string()
+            },
+        ));
+        checks.push((
+            "udev rule",
+            udev_rule
+                .as_ref()
+                .map(|p| p.display().to_string())
+                .unwrap_or_else(|| "not installed".to_string()),
+        ));
+        let mut hints: Vec<String> = Vec::new();
+        if !uhid.present {
+            hints.push("Load the module with: sudo modprobe uhid".to_string());
+        }
+        (checks, hints)
+    }
+
+    if json_output {
+        #[cfg(windows)]
+        {
+            let (checks, _hints) = windows_checks(&devices);
+            let json_checks: serde_json::Map<String, serde_json::Value> = checks
+                .into_iter()
+                .map(|(k, v)| (k.to_string(), serde_json::Value::String(v)))
+                .collect();
+            let checks = json!({
+                "platform": platform,
+                "supported_controllers": devices.len(),
+                "checks": json_checks,
+            });
+            println!("{}", serde_json::to_string_pretty(&checks)?);
+            return Ok(());
+        }
+        #[cfg(not(windows))]
+        {
+            let (checks, _hints) = linux_checks();
+            let hidraw_count: usize = checks
+                .iter()
+                .find(|(k, _)| *k == "hidraw nodes")
+                .and_then(|(_, v)| v.parse().ok())
+                .unwrap_or(0);
+            let uhid_present = checks
+                .iter()
+                .find(|(k, _)| *k == "uhid")
+                .map(|(_, v)| v == "present, read/write")
+                .unwrap_or(false);
+            let checks = json!({
+                "platform": platform,
+                "hidraw_nodes": hidraw_count,
+                "supported_controllers": devices.len(),
+                "uhid": uhid_present,
+                "hid_sony_module": checks
+                    .iter()
+                    .find(|(k, _)| *k == "hid_sony module")
+                    .map(|(_, v)| v == "loaded")
+                    .unwrap_or(false),
+                "udev_rule": checks
+                    .iter()
+                    .find(|(k, _)| *k == "udev rule")
+                    .and_then(|(_, v)| if v == "not installed" { None } else { Some(v.clone()) }),
+            });
+            println!("{}", serde_json::to_string_pretty(&checks)?);
+            return Ok(());
+        }
     }
 
     println!("ps3pad doctor");
     println!("  platform          {platform}");
-    println!("  hidraw nodes      {hidraw_count}");
     println!("  controllers       {} supported", devices.len());
     for (index, device) in devices.iter().enumerate() {
         println!(
@@ -216,39 +326,38 @@ pub fn doctor(json_output: bool) -> Result<()> {
             device.name
         );
     }
-    println!(
-        "  /dev/uhid         {}",
-        match (uhid.present, uhid.readable, uhid.writable) {
-            (false, _, _) => "MISSING (load the uhid module)",
-            (true, true, true) => "present, read/write",
-            (true, true, false) => "present, read-only (check permissions)",
-            (true, false, _) => "present, not readable (check permissions)",
-        }
-    );
-    println!(
-        "  hid_sony module   {}",
-        if module_loaded {
-            "loaded (kernel also exposes the controller as an evdev gamepad)"
-        } else {
-            "not loaded (optional; ps3pad talks to hidraw directly)"
-        }
-    );
-    println!(
-        "  udev rule         {}",
-        udev_rule
-            .as_ref()
-            .map(|path| path.display().to_string())
-            .unwrap_or_else(|| "not installed (needed for non-root hidraw/uhid access)".to_string())
-    );
 
-    if devices.is_empty() {
-        println!();
-        println!("No controller detected. USB: connect the cable. Bluetooth: pair and press PS.");
+    #[cfg(windows)]
+    {
+        let (checks, hints) = windows_checks(&devices);
+        for (key, value) in &checks {
+            println!("  {:<18} {}", key, value);
+        }
+        if devices.is_empty() {
+            println!();
+            println!("No controller detected. Connect a DualShock 3 over USB and ensure the DsHidMini driver is installed.");
+        }
+        for hint in &hints {
+            println!();
+            println!("  {hint}");
+        }
     }
-    if !uhid.present {
-        println!();
-        println!("Load the module with: sudo modprobe uhid");
+    #[cfg(not(windows))]
+    {
+        let (checks, hints) = linux_checks();
+        for (key, value) in &checks {
+            println!("  {:<18} {}", key, value);
+        }
+        if devices.is_empty() {
+            println!();
+            println!("No controller detected. USB: connect the cable. Bluetooth: pair and press PS.");
+        }
+        for hint in &hints {
+            println!();
+            println!("  {hint}");
+        }
     }
+
     Ok(())
 }
 

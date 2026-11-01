@@ -1,0 +1,363 @@
+; DsHidMini - Virtual HID Mini-user-mode driver for Sony DualShock 3 Controllers
+; 
+; BSD 3-Clause License
+; 
+; Copyright (c) 2018-2026, Nefarius Software Solutions e.U.
+; All rights reserved.
+; 
+; Redistribution and use in source and binary forms, with or without
+; modification, are permitted provided that the following conditions are met:
+; 
+; 1. Redistributions of source code must retain the above copyright notice, this
+;    list of conditions and the following disclaimer.
+; 
+; 2. Redistributions in binary form must reproduce the above copyright notice,
+;    this list of conditions and the following disclaimer in the documentation
+;    and/or other materials provided with the distribution.
+; 
+; 3. Neither the name of the copyright holder nor the names of its
+;    contributors may be used to endorse or promote products derived from
+;    this software without specific prior written permission.
+; 
+; THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+; AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+; IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+; DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+; FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+; DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+; SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+; CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+; OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+; OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+[Version]
+Signature="$WINDOWS NT$"
+Class=HIDClass
+ClassGuid={745a17a0-74d3-11d0-b6fe-00a0c90f57da}
+Provider=%ProviderString%
+DriverVer = 10/17/2026,3.27.0.2500
+CatalogFile=dshidmini.cat
+PnpLockdown=1
+
+
+; ================= Device section =====================
+
+[Manufacturer]
+%ManufacturerString%=Nefarius, NTamd64.10.0...17763, NTamd64.10.0...22000, NTarm64.10.0...17763, NTarm64.10.0...22000
+
+; Windows 10 1809+ (legacy AddService for inbox WUDFRd / mshidumdf)
+[Nefarius.NTamd64.10.0...17763]
+; SIXAXIS/DS3 wireless via BthPS3
+%Ds3DeviceName%=dshidmini.BTH, BTHPS3BUS\{53f88889-1aaf-4353-a047-556b69ec6da6}&Dev&VID_054C&PID_0268
+; SIXAXIS/DS3 wired via USB
+%Ds3DeviceName%=dshidmini.USB, USB\VID_054C&PID_0268
+; NAVIGATION wireless via BthPS3
+%Ps3MoveNaviDeviceName%=dshidmini.BTH, BTHPS3BUS\{206F84FC-1615-4D9F-954D-21F5A5D388C5}&Dev&VID_054C&PID_042F
+; NAVIGATION wired via USB
+%Ps3MoveNaviDeviceName%=dshidmini.USB, USB\VID_054C&PID_042F
+; ShanWan USB WirelessGamepad / PS1-PS2 adapter. Same report format on other pads that reuse this ID.
+%ShanWanAdapterDeviceName%=dshidmini.USB, USB\VID_2563&PID_0575
+
+; Windows 11+ (Include/Needs against inbox MsHidUmdf.inf and WUDFRD.inf)
+[Nefarius.NTarm64.10.0...17763]
+; SIXAXIS/DS3 wireless via BthPS3
+%Ds3DeviceName%=dshidmini.BTH, BTHPS3BUS\{53f88889-1aaf-4353-a047-556b69ec6da6}&Dev&VID_054C&PID_0268
+; SIXAXIS/DS3 wired via USB
+%Ds3DeviceName%=dshidmini.USB, USB\VID_054C&PID_0268
+; NAVIGATION wireless via BthPS3
+%Ps3MoveNaviDeviceName%=dshidmini.BTH, BTHPS3BUS\{206F84FC-1615-4D9F-954D-21F5A5D388C5}&Dev&VID_054C&PID_042F
+; NAVIGATION wired via USB
+%Ps3MoveNaviDeviceName%=dshidmini.USB, USB\VID_054C&PID_042F
+; ShanWan USB WirelessGamepad / PS1-PS2 adapter. Same report format on other pads that reuse this ID.
+%ShanWanAdapterDeviceName%=dshidmini.USB, USB\VID_2563&PID_0575
+
+; Windows 11+ (Include/Needs against inbox MsHidUmdf.inf and WUDFRD.inf)
+[Nefarius.NTamd64.10.0...22000]
+; SIXAXIS/DS3 wireless via BthPS3
+%Ds3DeviceName%=dshidmini.BTH.Win11, BTHPS3BUS\{53f88889-1aaf-4353-a047-556b69ec6da6}&Dev&VID_054C&PID_0268
+; SIXAXIS/DS3 wired via USB
+%Ds3DeviceName%=dshidmini.USB.Win11, USB\VID_054C&PID_0268
+; NAVIGATION wireless via BthPS3
+%Ps3MoveNaviDeviceName%=dshidmini.BTH.Win11, BTHPS3BUS\{206F84FC-1615-4D9F-954D-21F5A5D388C5}&Dev&VID_054C&PID_042F
+; NAVIGATION wired via USB
+%Ps3MoveNaviDeviceName%=dshidmini.USB.Win11, USB\VID_054C&PID_042F
+; ShanWan USB WirelessGamepad / PS1-PS2 adapter. Same report format on other pads that reuse this ID.
+%ShanWanAdapterDeviceName%=dshidmini.USB.Win11, USB\VID_2563&PID_0575
+
+
+[Nefarius.NTarm64.10.0...22000]
+; SIXAXIS/DS3 wireless via BthPS3
+%Ds3DeviceName%=dshidmini.BTH.Win11, BTHPS3BUS\{53f88889-1aaf-4353-a047-556b69ec6da6}&Dev&VID_054C&PID_0268
+; SIXAXIS/DS3 wired via USB
+%Ds3DeviceName%=dshidmini.USB.Win11, USB\VID_054C&PID_0268
+; NAVIGATION wireless via BthPS3
+%Ps3MoveNaviDeviceName%=dshidmini.BTH.Win11, BTHPS3BUS\{206F84FC-1615-4D9F-954D-21F5A5D388C5}&Dev&VID_054C&PID_042F
+; NAVIGATION wired via USB
+%Ps3MoveNaviDeviceName%=dshidmini.USB.Win11, USB\VID_054C&PID_042F
+; ShanWan USB WirelessGamepad / PS1-PS2 adapter. Same report format on other pads that reuse this ID.
+%ShanWanAdapterDeviceName%=dshidmini.USB.Win11, USB\VID_2563&PID_0575
+
+
+[dshidmini.BTH.NT]
+CopyFiles=UMDriverCopy
+AddProperty=DSHM_HidDeviceMode
+
+[dshidmini.USB.NT]
+CopyFiles=UMDriverCopy
+AddProperty=DSHM_HidDeviceMode
+
+[dshidmini.BTH.NT.hw]
+AddReg=dshidmini.BTH_AddReg ; BTH-specific
+AddReg=dshidmini_AddReg_FFB ; Common
+
+[dshidmini.USB.NT.hw]
+AddReg=dshidmini.USB_AddReg ; USB-specific
+AddReg=dshidmini_AddReg_FFB ; Common
+
+; Windows 11+ install: reference inbox INFs instead of declaring
+; ServiceBinary for WUDFRd.sys / mshidumdf.sys (InfVerif 2084).
+[dshidmini.BTH.Win11.NT]
+Include=MsHidUmdf.inf
+Needs=MsHidUmdf.NT
+Include=WUDFRD.inf
+Needs=WUDFRD_LowerFilter.NT
+CopyFiles=UMDriverCopy
+AddProperty=DSHM_HidDeviceMode
+
+[dshidmini.USB.Win11.NT]
+Include=MsHidUmdf.inf
+Needs=MsHidUmdf.NT
+Include=WUDFRD.inf
+Needs=WUDFRD_LowerFilter.NT
+CopyFiles=UMDriverCopy
+AddProperty=DSHM_HidDeviceMode
+
+[dshidmini.BTH.Win11.NT.hw]
+Include=MsHidUmdf.inf
+Needs=MsHidUmdf.NT.hw
+Include=WUDFRD.inf
+Needs=WUDFRD_LowerFilter.NT.hw
+AddReg=dshidmini.BTH_AddReg ; BTH-specific
+AddReg=dshidmini_AddReg_FFB ; Common
+
+[dshidmini.USB.Win11.NT.hw]
+Include=MsHidUmdf.inf
+Needs=MsHidUmdf.NT.hw
+Include=WUDFRD.inf
+Needs=WUDFRD_LowerFilter.NT.hw
+AddReg=dshidmini.USB_AddReg ; USB-specific
+AddReg=dshidmini_AddReg_FFB ; Common
+
+
+; Different HID emulation modes. Valid values are:
+; - 1 = Single device mode. Custom report descriptor.
+;       Emulates one gamepad with all buttons and axes exposed.
+;       Might not work with every gaming API, especially DirectInput.
+; - 2 = Multi device mode. Custom report descriptor.
+;       Emulates a gamepad and a joystick for one physical device.
+;       Provides maximum compatibility with most known gaming API.
+; - 3 = SIXAXIS.SYS compatible mode. Sony "official" report descriptor.
+;       Emulates the exact gamepad layout the Sony SIXAXIS.SYS driver uses.
+;       Provides best compatibility with RPCS3 and the SCP XInput Bridge proxy DLL.
+; - 4 = DualShock 4 compatible mode. DualShock 4 Rev1 report descriptor.
+;       Emulates the exact gamepad layout the DualShock 4 uses.
+;       Provides best compatibility with Ryochan7's DS4Windows.
+; - 5 = XInput compatible mode. Xbox One Controller report descriptor.
+;       Emulates the exact gamepad layout the Xbox One Controller uses.
+;       Provides best compatibility with most modern PC-based games, including Steam.
+[DSHM_HidDeviceMode]
+; DEVPKEY_DsHidMini_RW_HidDeviceMode
+{6D293077-C3D6-4062-9597-BE4389404C02}, 2, 3, 0x00000001 , 5 ; Default to XINPUT mode
+
+
+[dshidmini.BTH.NT.Services]
+AddService=WUDFRd,0x000001f8,WUDFRD_ServiceInstall
+AddService=mshidumdf, 0x000001fa, mshidumdf.AddService ;flag 0x2 sets this as the service for the device
+
+[dshidmini.USB.NT.Services]
+AddService=WUDFRd,0x000001f8,WUDFRD_ServiceInstall
+AddService=mshidumdf, 0x000001fa, mshidumdf.AddService ;flag 0x2 sets this as the service for the device
+
+[dshidmini.BTH.Win11.NT.Services]
+Include=MsHidUmdf.inf
+Needs=MsHidUmdf.NT.Services
+Include=WUDFRD.inf
+Needs=WUDFRD_LowerFilter.NT.Services
+
+[dshidmini.USB.Win11.NT.Services]
+Include=MsHidUmdf.inf
+Needs=MsHidUmdf.NT.Services
+Include=WUDFRD.inf
+Needs=WUDFRD_LowerFilter.NT.Services
+
+; Keep LowerFilters via AddReg on both OS branches. Do not add
+; Needs=WUDFRD_LowerFilter.NT.Filters: mixing AddFilter for WUDFRd
+; with a registry nssmkig entry yields arbitrary relative order
+; unless this INF also defines LowerFilterLevels, and the docs
+; disagree on which end of that list sits closest to the FDO.
+; InfVerif does not flag AddReg filters even in /h mode.
+[dshidmini.BTH_AddReg]
+HKR,,"LowerFilters",0x00010008,"WUDFRd" ; FLG_ADDREG_TYPE_MULTI_SZ | FLG_ADDREG_APPEND
+HKR,,"LowerFilters",0x00010008,"nssmkig" ; FLG_ADDREG_TYPE_MULTI_SZ | FLG_ADDREG_APPEND
+
+[dshidmini.USB_AddReg]
+HKR,,"LowerFilters",0x00010008,"WUDFRd" ; FLG_ADDREG_TYPE_MULTI_SZ | FLG_ADDREG_APPEND
+HKR,,"LowerFilters",0x00010008,"nssmkig" ; FLG_ADDREG_TYPE_MULTI_SZ | FLG_ADDREG_APPEND
+HKR,,"DeviceResetNotificationEnabled",0x00010001,0 ; enabled by default, not supported
+
+[dshidmini_AddReg_FFB]
+; FFB device definition
+HKLM,%Ds3Device_WMRW%,OEMName,,"%Ds3DeviceName%"
+HKLM,%Ds3Device_WMRW%\OEMForceFeedback,CLSID,,"%CLSID_WMRW_FF%"
+HKLM,%Ds3Device_WMRW%\OEMForceFeedback,CreatedBy,1,00,08,00,00
+HKLM,%Ds3Device_WMRW%\OEMForceFeedback,Attributes,1,00,00,00,00,40,42,0f,00,40,42,0f,00
+; FFB effects definition
+HKLM,%Ds3Device_WMRWFF%\%FG_CONST%,,0,%FN_CONST%
+HKLM,%Ds3Device_WMRWFF%\%FG_CONST%,Attributes,1,26,00,0f,00,01,86,00,00,fd,03,00,00,fd,03,00,00,20,00,00,00
+HKLM,%Ds3Device_WMRWFF%\%FG_RAMPF%,,0,%FN_RAMPF%
+HKLM,%Ds3Device_WMRWFF%\%FG_RAMPF%,Attributes,1,27,00,0f,00,02,86,00,00,fd,03,00,00,fd,03,00,00,20,00,00,00
+HKLM,%Ds3Device_WMRWFF%\%FG_SQUAR%,,0,%FN_SQUAR%
+HKLM,%Ds3Device_WMRWFF%\%FG_SQUAR%,Attributes,1,30,00,0f,00,03,86,00,00,fd,03,00,00,fd,03,00,00,20,00,00,00
+HKLM,%Ds3Device_WMRWFF%\%FG_SINEW%,,0,%FN_SINEW%
+HKLM,%Ds3Device_WMRWFF%\%FG_SINEW%,Attributes,1,31,00,0f,00,03,86,00,00,fd,03,00,00,fd,03,00,00,20,00,00,00
+HKLM,%Ds3Device_WMRWFF%\%FG_TRIAN%,,0,%FN_TRIAN%
+HKLM,%Ds3Device_WMRWFF%\%FG_TRIAN%,Attributes,1,32,00,0f,00,03,86,00,00,fd,03,00,00,fd,03,00,00,20,00,00,00
+HKLM,%Ds3Device_WMRWFF%\%FG_SAWUP%,,0,%FN_SAWUP%
+HKLM,%Ds3Device_WMRWFF%\%FG_SAWUP%,Attributes,1,33,00,0f,00,03,86,00,00,fd,03,00,00,fd,03,00,00,20,00,00,00
+HKLM,%Ds3Device_WMRWFF%\%FG_SAWDN%,,0,%FN_SAWDN%
+HKLM,%Ds3Device_WMRWFF%\%FG_SAWDN%,Attributes,1,34,00,0f,00,03,86,00,00,fd,03,00,00,fd,03,00,00,20,00,00,00
+HKLM,%Ds3Device_WMRWFF%\%FG_SPRIN%,,0,%FN_SPRIN%
+HKLM,%Ds3Device_WMRWFF%\%FG_SPRIN%,Attributes,1,40,00,0f,00,04,C8,00,00,65,03,00,00,65,03,00,00,20,00,00,00
+HKLM,%Ds3Device_WMRWFF%\%FG_DAMPE%,,0,%FN_DAMPE%
+HKLM,%Ds3Device_WMRWFF%\%FG_DAMPE%,Attributes,1,41,00,0f,00,04,C8,00,00,65,03,00,00,65,03,00,00,20,00,00,00
+HKLM,%Ds3Device_WMRWFF%\%FG_INERT%,,0,%FN_INERT%
+HKLM,%Ds3Device_WMRWFF%\%FG_INERT%,Attributes,1,42,00,0f,00,04,C8,00,00,65,03,00,00,65,03,00,00,20,00,00,00
+HKLM,%Ds3Device_WMRWFF%\%FG_FRICT%,,0,%FN_FRICT%
+HKLM,%Ds3Device_WMRWFF%\%FG_FRICT%,Attributes,1,43,00,0f,00,04,C8,00,00,65,03,00,00,65,03,00,00,20,00,00,00
+HKLM,%Ds3Device_WMRWFF%\%FG_CUSTO%,,0,%FN_CUSTO%
+HKLM,%Ds3Device_WMRWFF%\%FG_CUSTO%,Attributes,1,28,00,0f,00,05,C8,00,00,fd,03,00,00,fd,03,00,00,20,00,00,00
+
+[mshidumdf.AddService]
+ServiceType    = 1                  ; SERVICE_KERNEL_DRIVER
+StartType      = 3                  ; SERVICE_DEMAND_START
+ErrorControl   = 1                  ; SERVICE_ERROR_NORMAL
+ServiceBinary  = %12%\mshidumdf.sys
+
+[WUDFRD_ServiceInstall]
+DisplayName    = %WudfRdDisplayName%
+ServiceType    = 1
+StartType      = 3
+ErrorControl   = 1
+ServiceBinary  = %12%\WUDFRd.sys
+
+; Reflector settings for Bluetooth
+[dshidmini.BTH.NT.Wdf]
+UmdfService="dshidmini", dshidmini_Install
+UmdfServiceOrder=dshidmini
+UmdfKernelModeClientPolicy=AllowKernelModeClients
+UmdfFileObjectPolicy=AllowNullAndUnknownFileObjects
+UmdfMethodNeitherAction=Copy
+UmdfFsContextUsePolicy=CanUseFsContext2
+UmdfHostPriority=PriorityHigh ; HID client driver
+
+; Reflector settings for USB
+[dshidmini.USB.NT.Wdf]
+UmdfService="dshidmini", dshidmini_Install
+UmdfServiceOrder=dshidmini
+UmdfKernelModeClientPolicy=AllowKernelModeClients
+UmdfFileObjectPolicy=AllowNullAndUnknownFileObjects
+UmdfMethodNeitherAction=Copy
+UmdfFsContextUsePolicy=CanUseFsContext2
+UmdfHostPriority=PriorityHigh ; HID client driver
+UmdfDispatcher=NativeUSB
+
+[dshidmini.BTH.Win11.NT.Wdf]
+UmdfService="dshidmini", dshidmini_Install
+UmdfServiceOrder=dshidmini
+UmdfKernelModeClientPolicy=AllowKernelModeClients
+UmdfFileObjectPolicy=AllowNullAndUnknownFileObjects
+UmdfMethodNeitherAction=Copy
+UmdfFsContextUsePolicy=CanUseFsContext2
+UmdfHostPriority=PriorityHigh ; HID client driver
+
+[dshidmini.USB.Win11.NT.Wdf]
+UmdfService="dshidmini", dshidmini_Install
+UmdfServiceOrder=dshidmini
+UmdfKernelModeClientPolicy=AllowKernelModeClients
+UmdfFileObjectPolicy=AllowNullAndUnknownFileObjects
+UmdfMethodNeitherAction=Copy
+UmdfFsContextUsePolicy=CanUseFsContext2
+UmdfHostPriority=PriorityHigh ; HID client driver
+UmdfDispatcher=NativeUSB
+
+[dshidmini_Install]
+UmdfLibraryVersion=2.15.0
+ServiceBinary="%12%\UMDF\dshidmini.dll"
+AddReg=UMDFVerifierAddReg
+
+[UMDFVerifierAddReg]
+; For verbose diagnostics, set to 1
+HKR,Parameters,VerboseOn,0x00010003,1 ; FLG_ADDREG_NOCLOBBER | FLG_ADDREG_TYPE_DWORD
+
+; ================= copy files =====================
+
+[UMDriverCopy]
+dshidmini.dll,,,0x00004000  ; COPYFLG_IN_USE_RENAME
+
+[SourceDisksNames]
+1=%Disk_Description%,,,
+
+[SourceDisksFiles.amd64]
+dshidmini.dll=1,x64
+
+[SourceDisksFiles.arm64]
+dshidmini.dll=1,ARM64
+
+[DestinationDirs]
+UMDriverCopy=12,UMDF ; copy to drivers\umdf
+
+;---------------------------------------------------------------;
+
+[Strings]
+ProviderString     ="Nefarius Software Solutions e.U."
+ManufacturerString ="Nefarius Software Solutions e.U."
+Disk_Description   ="DsHidMini Installation Disk"
+WudfRdDisplayName  ="Windows Driver Foundation - User-mode Driver Framework Reflector"
+
+; Device display names
+Ds3DeviceName = "DS3 Compatible HID Device"
+Ps3MoveNaviDeviceName = "Navigation Compatible HID Device"
+ShanWanAdapterDeviceName = "ShanWan PS1/PS2 USB Adapter"
+dshidmini.GIP.HID.DeviceDesc = "XINPUT compatible HID device"
+
+; FFB
+Ds3Device_WMRW   = "System\CurrentControlSet\Control\MediaProperties\PrivateProperties\Joystick\OEM\VID_054C&PID_0268"
+Ds3Device_WMRWFF = "System\CurrentControlSet\Control\MediaProperties\PrivateProperties\Joystick\OEM\VID_054C&PID_0268\OEMForceFeedback\Effects"
+CLSID_WMRW_FF    = "{EEC6993A-B3FD-11D2-A916-00C04FB98638}" ; auto-generated, reference pid.dll
+FN_CREATE        = "CreatedBy"
+FN_ATTRIB        = "Attributes"
+FG_CONST         = "{13541C20-8E33-11D0-9AD0-00A0C9A06E35}" ; auto-generated
+FN_CONST         = "Constant"
+FG_RAMPF         = "{13541C21-8E33-11D0-9AD0-00A0C9A06E35}" ; auto-generated
+FN_RAMPF         = "Ramp Force"
+FG_SQUAR         = "{13541C22-8E33-11D0-9AD0-00A0C9A06E35}" ; auto-generated
+FN_SQUAR         = "Square Wave"
+FG_SINEW         = "{13541C23-8E33-11D0-9AD0-00A0C9A06E35}" ; auto-generated
+FN_SINEW         = "Sine Wave"
+FG_TRIAN         = "{13541C24-8E33-11D0-9AD0-00A0C9A06E35}" ; auto-generated
+FN_TRIAN         = "Triangle Wave"
+FG_SAWUP         = "{13541C25-8E33-11D0-9AD0-00A0C9A06E35}" ; auto-generated
+FN_SAWUP         = "Sawtooth Up Wave"
+FG_SAWDN         = "{13541C26-8E33-11D0-9AD0-00A0C9A06E35}" ; auto-generated
+FN_SAWDN         = "Sawtooth Down Wave"
+FG_SPRIN         = "{13541C27-8E33-11D0-9AD0-00A0C9A06E35}" ; auto-generated
+FN_SPRIN         = "Spring"
+FG_DAMPE         = "{13541C28-8E33-11D0-9AD0-00A0C9A06E35}" ; auto-generated
+FN_DAMPE         = "Damper"
+FG_INERT         = "{13541C29-8E33-11D0-9AD0-00A0C9A06E35}" ; auto-generated
+FN_INERT         = "Inertia"
+FG_FRICT         = "{13541C2A-8E33-11D0-9AD0-00A0C9A06E35}" ; auto-generated
+FN_FRICT         = "Friction"
+FG_CUSTO         = "{13541C2B-8E33-11D0-9AD0-00A0C9A06E35}" ; auto-generated
+FN_CUSTO         = "Custom Force"

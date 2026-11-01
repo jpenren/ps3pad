@@ -140,7 +140,12 @@ mod imp {
     pub use crate::linux::{discover, Controller};
 }
 
-#[cfg(not(target_os = "linux"))]
+#[cfg(target_os = "windows")]
+mod imp {
+    pub use crate::windows::{discover, Controller};
+}
+
+#[cfg(not(any(target_os = "linux", target_os = "windows")))]
 mod imp {
     use std::time::Duration;
 

@@ -5,6 +5,7 @@ mod daemon;
 mod gui;
 #[cfg(unix)]
 mod socket;
+mod logger;
 mod util;
 
 use anyhow::Result;
@@ -21,6 +22,9 @@ fn main() -> Result<()> {
         2 => "debug",
         _ => "trace",
     };
+    #[cfg(windows)]
+    logger::init(level);
+    #[cfg(not(windows))]
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(level)).init();
 
     match cli.command {

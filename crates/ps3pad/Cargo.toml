@@ -14,11 +14,13 @@ path = "src/main.rs"
 ps3pad-core = { path = "../ps3pad-core" }
 ps3pad-platform = { path = "../ps3pad-platform" }
 anyhow.workspace = true
-clap.workspace = true
-env_logger.workspace = true
+clap = { version = "4.5", features = ["derive", "std"], default-features = false }
 log.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+
+[target.'cfg(not(windows))'.dependencies]
+env_logger.workspace = true
 
 [features]
 default = ["gui"]

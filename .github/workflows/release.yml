@@ -23,7 +23,7 @@ jobs:
             artifact: ps3pad-linux-x86_64.tar.gz
             rust_targets: ''
 
-          # Windows nativo (MSVC - compila driver KMDF + app)
+          # Windows nativo (MSVC - compila app + empaqueta driver DsHidMini)
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             artifact: ps3pad-windows-x86_64.zip
@@ -120,6 +120,12 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
+          # Fetch the DsHidMini driver package (signed UMDF driver for the DS3)
+          # before building the installer so the driver files are bundled.
+          Write-Host "Fetching DsHidMini driver package..."
+          & installer\windows\fetch-dshidmini.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
           $version = "${{ github.ref_name }}"
           if ($version -match '^v(.+)$') {
             $version = $Matches[1]

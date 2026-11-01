@@ -49,8 +49,41 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libudev-dev pkg-config
 
-      - name: Build native
-        if: matrix.target != 'universal'
+      # ubuntu-latest ships a very new glibc (2.43 as of this writing), which
+      # makes the resulting binary unusable on older distros. cargo-zigbuild
+      # links against Zig's bundled glibc stubs so the release works on
+      # glibc >= 2.17 (Debian 10+, Ubuntu 18.04+, etc.).
+      - name: Install Zig (Linux, for glibc 2.17 compatibility)
+        if: runner.os == 'Linux'
+        uses: mlugg/setup-zig@v2
+        with:
+          version: 0.17.0
+
+      - name: Install cargo-zigbuild (Linux)
+        if: runner.os == 'Linux'
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-zigbuild@0.24.0
+
+      - name: Build Linux (glibc 2.17 compatible)
+        if: runner.os == 'Linux'
+        run: |
+          cargo zigbuild --release --target x86_64-unknown-linux-gnu.2.17 --workspace --bins
+
+      - name: Verify Linux glibc compatibility
+        if: runner.os == 'Linux'
+        run: |
+          max=$(objdump -T target/x86_64-unknown-linux-gnu/release/ps3pad \
+            | grep -o 'GLIBC_[0-9.]*' | sort -Vu | tail -1)
+          echo "Maximum required glibc symbol: $max"
+          version=${max#GLIBC_}
+          if dpkg --compare-versions "$version" gt "2.17"; then
+            echo "ERROR: binary requires glibc $version, expected <= 2.17" >&2
+            exit 1
+          fi
+
+      - name: Build native (Windows)
+        if: runner.os == 'Windows'
         run: |
           cargo build --release --target ${{ matrix.target }} --workspace --bins
 

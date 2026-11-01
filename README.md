@@ -21,6 +21,93 @@ Self-contained Sony DualShock 3 / SIXAXIS driver and tester for Linux, Windows, 
 - **macOS**: macOS 12+ (Monterey), Xcode command-line tools. `IOHIDUserDevice` runs in-process on a CFRunLoop thread; no DriverKit entitlements needed.
 - **Rust**: 1.85+ (MSRV tracked in workspace).
 
+## Quick install (prebuilt binaries)
+
+Prebuilt binaries for every supported platform are attached to the
+[latest release](https://github.com/jpenren/ps3pad/releases/latest). The
+`latest/download/...` URLs below always resolve to the newest release, so you
+do not need to know the version number.
+
+| Platform | Release asset |
+| --- | --- |
+| Linux x86_64 | `ps3pad-linux-x86_64.tar.gz` + `ps3pad-linux-udev.tar.gz` |
+| Windows x86_64 | `ps3pad-windows-x86_64.zip` |
+| macOS Apple Silicon | `ps3pad-macos-aarch64.tar.gz` |
+| macOS Intel | `ps3pad-macos-x86_64.tar.gz` |
+| macOS universal | `ps3pad-macos-universal.tar.gz` |
+
+### Linux
+
+```bash
+# Binary
+curl -LO https://github.com/jpenren/ps3pad/releases/latest/download/ps3pad-linux-x86_64.tar.gz
+tar xzf ps3pad-linux-x86_64.tar.gz
+sudo install -m 0755 ps3pad /usr/local/bin/ps3pad
+
+# udev rules (required for non-root access)
+curl -LO https://github.com/jpenren/ps3pad/releases/latest/download/ps3pad-linux-udev.tar.gz
+tar xzf ps3pad-linux-udev.tar.gz
+sudo install -m 0644 60-ps3pad.rules /etc/udev/rules.d/
+sudo udevadm control --reload-rules
+sudo udevadm trigger
+```
+
+Verify the install with:
+
+```bash
+ps3pad list
+```
+
+The Linux binary is built against glibc 2.17, so it runs on most current
+distributions (Debian 10+, Ubuntu 18.04+, Fedora, Arch, etc.) without requiring
+a newer system libc.
+
+### Windows
+
+Download and extract
+[`ps3pad-windows-x86_64.zip`](https://github.com/jpenren/ps3pad/releases/latest/download/ps3pad-windows-x86_64.zip),
+then run `dist\ps3pad.exe` from the extracted folder:
+
+```powershell
+Invoke-WebRequest `
+  -Uri https://github.com/jpenren/ps3pad/releases/latest/download/ps3pad-windows-x86_64.zip `
+  -OutFile ps3pad-windows-x86_64.zip
+Expand-Archive .\ps3pad-windows-x86_64.zip -DestinationPath .
+.\dist\ps3pad.exe list
+```
+
+The virtual gamepad still needs the KMDF/VHF driver; see
+[Windows driver (KMDF/VHF)](#windows-driver-kmdfvhf).
+
+### macOS
+
+Choose the archive that matches your Mac:
+
+```bash
+# Apple Silicon (M1/M2/M3/...)
+curl -LO https://github.com/jpenren/ps3pad/releases/latest/download/ps3pad-macos-aarch64.tar.gz
+tar xzf ps3pad-macos-aarch64.tar.gz
+sudo install -m 0755 ps3pad-aarch64 /usr/local/bin/ps3pad
+
+# Intel
+curl -LO https://github.com/jpenren/ps3pad/releases/latest/download/ps3pad-macos-x86_64.tar.gz
+tar xzf ps3pad-macos-x86_64.tar.gz
+sudo install -m 0755 ps3pad-x86_64 /usr/local/bin/ps3pad
+
+# Universal (works on both)
+curl -LO https://github.com/jpenren/ps3pad/releases/latest/download/ps3pad-macos-universal.tar.gz
+tar xzf ps3pad-macos-universal.tar.gz
+sudo install -m 0755 ps3pad-universal /usr/local/bin/ps3pad
+```
+
+Run `ps3pad list` to verify the install. The binaries are not notarized; if
+macOS blocks them, allow the app in **System Settings → Privacy & Security** or
+remove the quarantine attribute:
+
+```bash
+sudo xattr -d com.apple.quarantine /usr/local/bin/ps3pad 2>/dev/null || true
+```
+
 ## Building
 
 ```bash
@@ -51,7 +138,10 @@ See `drivers/windows/BUILD.md` for detailed instructions.
 
 No special build steps. The Rust code links against IOKit and CoreFoundation system frameworks. Run the binary directly; the virtual HID device appears on a background CFRunLoop thread.
 
-## Installation (Linux)
+## Linux permissions (udev)
+
+Required for both prebuilt and source builds; the Linux quick-install steps
+above already install these rules.
 
 ```bash
 sudo install -m 0644 drivers/linux/60-ps3pad.rules /etc/udev/rules.d/

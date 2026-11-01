@@ -79,3 +79,5 @@ Remove-Item $msiPath -ErrorAction SilentlyContinue
 
 Write-Host "=== DsHidMini driver package extracted to $outDir ==="
 Get-ChildItem -Recurse $outDir | ForEach-Object { Write-Host "  $($_.FullName)" }
+
+exit 0

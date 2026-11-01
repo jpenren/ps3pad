@@ -178,8 +178,17 @@ jobs:
           }
           Write-Host "Using ISCC: $iscc"
 
+          # Verify the .iss file exists
+          $issFile = "installer\windows\ps3pad.iss"
+          if (-not (Test-Path $issFile)) {
+            throw "Inno Setup script not found: $issFile"
+          }
+          Write-Host "Using ISS file: $issFile"
+
           New-Item -ItemType Directory -Force dist | Out-Null
-          & $iscc "/DMyAppVersion=$version" "installer\windows\ps3pad.iss"
+          Write-Host "Running ISCC..."
+          $output = & $iscc "/DMyAppVersion=$version" "$issFile" 2>&1
+          Write-Host $output
           $isccExitCode = $LASTEXITCODE
           Write-Host "ISCC exit code: $isccExitCode"
           if ($isccExitCode -ne 0) { exit $isccExitCode }

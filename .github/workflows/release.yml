@@ -16,25 +16,23 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Linux nativo + cross macOS only
+          # Linux nativo. Los targets Apple NO se pueden cross-compilar desde
+          # Linux sin el SDK de macOS (osxcross); se construyen en el job macOS.
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             artifact: ps3pad-linux-x86_64.tar.gz
-            cross_targets: x86_64-apple-darwin aarch64-apple-darwin
-            rust_targets: x86_64-apple-darwin aarch64-apple-darwin
+            rust_targets: ''
 
           # Windows nativo (MSVC - compila driver KMDF + app)
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             artifact: ps3pad-windows-x86_64.zip
-            cross_targets: ''
             rust_targets: ''
 
           # macOS: un solo job en macos-15 (ARM) que compila AMBOS targets vía Rosetta 2
           - os: macos-15
             target: universal
             artifact: ps3pad-macos-universal.tar.gz
-            cross_targets: ''
             rust_targets: x86_64-apple-darwin aarch64-apple-darwin
 
     steps:
@@ -49,14 +47,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y \
-            libudev-dev pkg-config \
-            gcc-mingw-w64-x86_64 \
-            clang lld llvm
-
-      - name: Install cross (Linux -> Windows/macOS)
-        if: runner.os == 'Linux' && matrix.cross_targets != ''
-        uses: taiki-e/install-action@cross
+          sudo apt-get install -y libudev-dev pkg-config
 
       - name: Build native
         if: matrix.target != 'universal'
@@ -66,15 +57,13 @@ jobs:
       - name: Build both macOS targets (on macos-15)
         if: matrix.target == 'universal'
         run: |
+          # Idempotent: guarantees both std targets exist even if the matrix
+          # entry changes. Without them rustc fails with E0463 "can't find
+          # crate for `std`".
+          rustup target add x86_64-apple-darwin aarch64-apple-darwin
+          rustup target list --installed
           cargo build --release --target x86_64-apple-darwin --workspace --bins
           cargo build --release --target aarch64-apple-darwin --workspace --bins
-
-      - name: Build cross targets (from Linux)
-        if: runner.os == 'Linux' && matrix.cross_targets != ''
-        run: |
-          for t in ${{ matrix.cross_targets }}; do
-            cross build --release --target $t --workspace --bins
-          done
 
       - name: Package Linux
         if: runner.os == 'Linux' && matrix.target == 'x86_64-unknown-linux-gnu'
@@ -84,15 +73,6 @@ jobs:
           tar czf ${{ matrix.artifact }} -C dist ps3pad
           cp drivers/linux/60-ps3pad.rules dist/
           tar czf ps3pad-linux-udev.tar.gz -C dist 60-ps3pad.rules
-
-      - name: Package Windows (cross from Linux)
-        if: runner.os == 'Linux' && contains(matrix.cross_targets, 'x86_64-pc-windows-gnu')
-        shell: bash
-        run: |
-          mkdir -p dist
-          cp target/x86_64-pc-windows-gnu/release/ps3pad.exe dist/
-          cp -r drivers/windows dist/ 2>/dev/null || true
-          zip -r ${{ matrix.artifact }} dist/*
 
       - name: Package Windows (native MSVC)
         if: runner.os == 'Windows'

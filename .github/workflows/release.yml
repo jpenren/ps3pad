@@ -224,17 +224,44 @@ jobs:
             -output dist/ps3pad-universal
           tar czf ${{ matrix.artifact }} -C dist ps3pad-universal
 
-      - name: Upload artifacts
+      - name: Upload Windows artifacts
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ps3pad-windows-x86_64-setup
+          path: dist/ps3pad-windows-x86_64-setup.exe
+          retention-days: 7
+
+      - name: Upload Windows portable zip
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ps3pad-windows-x86_64-zip
+          path: ps3pad-windows-x86_64.zip
+          retention-days: 7
+
+      - name: Upload Linux artifacts
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ps3pad-linux-x86_64
+          path: ps3pad-linux-x86_64.tar.gz
+          retention-days: 7
+
+      - name: Upload Linux udev rules
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ps3pad-linux-udev
+          path: ps3pad-linux-udev.tar.gz
+          retention-days: 7
+
+      - name: Upload macOS artifacts
+        if: runner.os == 'macOS'
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
-          path: |
-            ${{ matrix.artifact }}
-            dist/ps3pad-windows-x86_64-setup.exe
-            ps3pad-linux-udev.tar.gz
-            ps3pad-macos-x86_64.tar.gz
-            ps3pad-macos-aarch64.tar.gz
-            ps3pad-macos-universal.tar.gz
+          path: ${{ matrix.artifact }}
           retention-days: 7
 
   release:

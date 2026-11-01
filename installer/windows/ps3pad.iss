@@ -80,8 +80,8 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Parameter
 [Run]
 ; Install the DsHidMini driver package elevated so the connected DS3 is
 ; bound to DsHidMini and exposed as a native XInput gamepad.
-Filename: "{app}\install-driver.ps1"; Parameters: "-WindowStyle Hidden -DriverDir ""{app}\drivers\dshidmini"""; WorkingDir: "{app}"; Flags: waituntilidle; StatusMsg: "Installing DsHidMini driver for DualShock 3..."
+Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-ExecutionPolicy Bypass -WindowStyle Hidden -File ""{app}\install-driver.ps1"" -DriverDir ""{app}\drivers\dshidmini"""; WorkingDir: "{app}"; Flags: waituntilidle; StatusMsg: "Installing DsHidMini driver for DualShock 3..."
 
 [UninstallRun]
 ; Remove the DsHidMini driver packages from the driver store.
-Filename: "{app}\uninstall-driver.ps1"; WorkingDir: "{app}"; Flags: waituntilidle; StatusMsg: "Removing DsHidMini driver packages..."
+Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-ExecutionPolicy Bypass -WindowStyle Hidden -File ""{app}\uninstall-driver.ps1"""; WorkingDir: "{app}"; Flags: waituntilidle; StatusMsg: "Removing DsHidMini driver packages..."

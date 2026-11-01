@@ -121,22 +121,36 @@ jobs:
         shell: pwsh
         run: |
           Write-Host "Installing Inno Setup 6..."
-          $isccPath = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
-          if (-not (Test-Path $isccPath)) {
+          $isccPaths = @(
+            "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
+            "${env:ProgramFiles}\Inno Setup 6\ISCC.exe",
+            "C:\ProgramData\chocolatey\lib\innosetup\tools\ISCC.exe",
+            "C:\tools\Inno Setup 6\ISCC.exe"
+          )
+          $isccFound = $null
+          foreach ($path in $isccPaths) {
+            if (Test-Path $path) {
+              $isccFound = $path
+              break
+            }
+          }
+          if (-not $isccFound) {
             Write-Host "Downloading Inno Setup installer..."
             $installer = Join-Path $env:TEMP "is-6.exe"
             Invoke-WebRequest -Uri "https://jrsoftware.org/files/is-6.exe" -OutFile $installer
             Start-Process -FilePath $installer -ArgumentList "/SP-", "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART" -Wait
-            if (-not (Test-Path $isccPath)) {
-              # Try alternative path
-              $isccPath = (Get-ChildItem "${env:ProgramFiles(x86)}\Inno Setup*\ISCC.exe" |
-                Select-Object -First 1).FullName
+            foreach ($path in $isccPaths) {
+              if (Test-Path $path) {
+                $isccFound = $path
+                break
+              }
             }
           }
-          if (-not (Test-Path $isccPath)) {
+          if (-not $isccFound) {
             throw "ISCC.exe (Inno Setup) not found after installation"
           }
-          Write-Host "Inno Setup found at: $isccPath"
+          Write-Host "Inno Setup found at: $isccFound"
+          echo "ISCC_PATH=$isccFound" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Build Windows installer (Inno Setup)
         if: runner.os == 'Windows'
@@ -158,13 +172,9 @@ jobs:
           }
           Write-Host "Building PS3Pad installer $version"
 
-          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
-          if (-not (Test-Path $iscc)) {
-            $iscc = (Get-ChildItem "${env:ProgramFiles(x86)}\Inno Setup*\ISCC.exe" |
-              Select-Object -First 1).FullName
-          }
-          if (-not $iscc) {
-            throw "ISCC.exe (Inno Setup) not found"
+          $iscc = $env:ISCC_PATH
+          if (-not $iscc -or -not (Test-Path $iscc)) {
+            throw "ISCC.exe (Inno Setup) not found. Did Install Inno Setup step run?"
           }
 
           New-Item -ItemType Directory -Force dist | Out-Null

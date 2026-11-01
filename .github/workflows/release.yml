@@ -116,6 +116,14 @@ jobs:
           cp -r drivers/windows dist/ 2>/dev/null || true
           7z a ${{ matrix.artifact }} dist/*
 
+      - name: Install Inno Setup (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Write-Host "Installing Inno Setup 6..."
+          winget install --id JRSoftware.InnoSetup --accept-package-agreements --accept-source-agreements
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Build Windows installer (Inno Setup)
         if: runner.os == 'Windows'
         shell: pwsh

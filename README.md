@@ -21,9 +21,9 @@ Self-contained Sony DualShock 3 / SIXAXIS driver and tester for Linux, Windows, 
 - **macOS**: macOS 12+ (Monterey), Xcode command-line tools. `IOHIDUserDevice` runs in-process on a CFRunLoop thread; no DriverKit entitlements needed.
 - **Rust**: 1.85+ (MSRV tracked in workspace).
 
-## Quick install (prebuilt binaries)
+## Installation
 
-Prebuilt binaries for every supported platform are attached to the
+The fastest way to install is to download a prebuilt binary from the
 [latest release](https://github.com/jpenren/ps3pad/releases/latest). The
 `latest/download/...` URLs below always resolve to the newest release, so you
 do not need to know the version number.
@@ -36,7 +36,7 @@ do not need to know the version number.
 | macOS Intel | `ps3pad-macos-x86_64.tar.gz` |
 | macOS universal | `ps3pad-macos-universal.tar.gz` |
 
-### Linux
+### Linux installation
 
 ```bash
 # Binary
@@ -62,9 +62,13 @@ The Linux binary is built against glibc 2.17, so it runs on most current
 distributions (Debian 10+, Ubuntu 18.04+, Fedora, Arch, etc.) without requiring
 a newer system libc.
 
-### Windows
+If you build from source, install the same udev rules from
+`drivers/linux/60-ps3pad.rules` using the commands above.
 
-Download and extract
+### Windows installation
+
+The Windows build is a portable ZIP; there is no installer. Download and
+extract
 [`ps3pad-windows-x86_64.zip`](https://github.com/jpenren/ps3pad/releases/latest/download/ps3pad-windows-x86_64.zip),
 then run `dist\ps3pad.exe` from the extracted folder:
 
@@ -76,12 +80,14 @@ Expand-Archive .\ps3pad-windows-x86_64.zip -DestinationPath .
 .\dist\ps3pad.exe list
 ```
 
-The virtual gamepad still needs the KMDF/VHF driver; see
-[Windows driver (KMDF/VHF)](#windows-driver-kmdfvhf).
+Windows SmartScreen may warn because the executable is not code-signed; choose
+**More info → Run anyway**. The virtual gamepad still needs the KMDF/VHF
+driver; see [Windows driver (KMDF/VHF)](#windows-driver-kmdfvhf).
 
-### macOS
+### macOS installation
 
-Choose the archive that matches your Mac:
+No kernel extension or DriverKit extension is required. Choose the archive
+that matches your Mac (the universal build works on both):
 
 ```bash
 # Apple Silicon (M1/M2/M3/...)
@@ -137,19 +143,6 @@ See `drivers/windows/BUILD.md` for detailed instructions.
 ### macOS
 
 No special build steps. The Rust code links against IOKit and CoreFoundation system frameworks. Run the binary directly; the virtual HID device appears on a background CFRunLoop thread.
-
-## Linux permissions (udev)
-
-Required for both prebuilt and source builds; the Linux quick-install steps
-above already install these rules.
-
-```bash
-sudo install -m 0644 drivers/linux/60-ps3pad.rules /etc/udev/rules.d/
-sudo udevadm control --reload-rules
-sudo udevadm trigger
-```
-
-After this, `ps3pad list` / `dump` / `gui` work without `sudo`.
 
 ## Usage
 

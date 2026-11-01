@@ -158,6 +158,18 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Get-ChildItem dist
 
+      - name: Verify Windows installer exists
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $setupExe = "dist/ps3pad-windows-x86_64-setup.exe"
+          if (-not (Test-Path $setupExe)) {
+            Write-Host "ERROR: $setupExe was not created by Inno Setup"
+            Get-ChildItem dist -ErrorAction SilentlyContinue
+            exit 1
+          }
+          Write-Host "Installer found: $setupExe"
+
       - name: Package macOS individual targets + universal
         if: runner.os == 'macOS' && matrix.target == 'universal'
         run: |

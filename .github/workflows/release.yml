@@ -121,7 +121,7 @@ jobs:
         shell: pwsh
         run: |
           Write-Host "Installing Inno Setup 6..."
-          winget install --id JRSoftware.InnoSetup --accept-package-agreements --accept-source-agreements
+          choco install innosetup -y
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Build Windows installer (Inno Setup)

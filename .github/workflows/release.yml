@@ -176,10 +176,13 @@ jobs:
           if (-not $iscc -or -not (Test-Path $iscc)) {
             throw "ISCC.exe (Inno Setup) not found. Did Install Inno Setup step run?"
           }
+          Write-Host "Using ISCC: $iscc"
 
           New-Item -ItemType Directory -Force dist | Out-Null
           & $iscc "/DMyAppVersion=$version" "installer\windows\ps3pad.iss"
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $isccExitCode = $LASTEXITCODE
+          Write-Host "ISCC exit code: $isccExitCode"
+          if ($isccExitCode -ne 0) { exit $isccExitCode }
           Get-ChildItem dist
 
       - name: Verify Windows installer exists

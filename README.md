@@ -31,7 +31,7 @@ do not need to know the version number.
 | Platform | Release asset |
 | --- | --- |
 | Linux x86_64 | `ps3pad-linux-x86_64.tar.gz` + `ps3pad-linux-udev.tar.gz` |
-| Windows x86_64 | `ps3pad-windows-x86_64.zip` |
+| Windows x86_64 | `ps3pad-windows-x86_64-setup.exe` (installer) or `ps3pad-windows-x86_64.zip` (portable) |
 | macOS Apple Silicon | `ps3pad-macos-aarch64.tar.gz` |
 | macOS Intel | `ps3pad-macos-x86_64.tar.gz` |
 | macOS universal | `ps3pad-macos-universal.tar.gz` |
@@ -67,8 +67,27 @@ If you build from source, install the same udev rules from
 
 ### Windows installation
 
-The Windows build is a portable ZIP; there is no installer. Download and
-extract
+Download and run the installer wizard:
+
+[`ps3pad-windows-x86_64-setup.exe`](https://github.com/jpenren/ps3pad/releases/latest/download/ps3pad-windows-x86_64-setup.exe)
+
+The wizard installs the GUI and CLI, lets you choose a per-user or all-users
+installation, and can create a desktop shortcut.
+
+```powershell
+Invoke-WebRequest `
+  -Uri https://github.com/jpenren/ps3pad/releases/latest/download/ps3pad-windows-x86_64-setup.exe `
+  -OutFile ps3pad-windows-x86_64-setup.exe
+.\ps3pad-windows-x86_64-setup.exe
+```
+
+Windows SmartScreen may warn because the installer is not code-signed; choose
+**More info → Run anyway**. The virtual gamepad still needs the KMDF/VHF
+driver; see [Windows driver (KMDF/VHF)](#windows-driver-kmdfvhf).
+
+#### Portable ZIP
+
+If you prefer not to install anything, download and extract
 [`ps3pad-windows-x86_64.zip`](https://github.com/jpenren/ps3pad/releases/latest/download/ps3pad-windows-x86_64.zip),
 then run `dist\ps3pad.exe` from the extracted folder:
 
@@ -79,10 +98,6 @@ Invoke-WebRequest `
 Expand-Archive .\ps3pad-windows-x86_64.zip -DestinationPath .
 .\dist\ps3pad.exe list
 ```
-
-Windows SmartScreen may warn because the executable is not code-signed; choose
-**More info → Run anyway**. The virtual gamepad still needs the KMDF/VHF
-driver; see [Windows driver (KMDF/VHF)](#windows-driver-kmdfvhf).
 
 ### macOS installation
 
@@ -139,6 +154,18 @@ Located in `drivers/windows/`:
 4. The driver creates `\DosDevices\Ps3padVhf` for the Rust virtual-pad backend.
 
 See `drivers/windows/BUILD.md` for detailed instructions.
+
+### Windows installer (Inno Setup)
+
+The installer script is `installer/windows/ps3pad.iss`. After building the
+Windows binary, compile it with Inno Setup 6:
+
+```powershell
+ISCC.exe /DMyAppVersion=0.1.0 installer\windows\ps3pad.iss
+```
+
+The resulting wizard is written to `dist\ps3pad-windows-x86_64-setup.exe`. The
+release workflow builds it automatically.
 
 ### macOS
 

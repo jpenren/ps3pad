@@ -116,6 +116,34 @@ jobs:
           cp -r drivers/windows dist/ 2>/dev/null || true
           7z a ${{ matrix.artifact }} dist/*
 
+      - name: Build Windows installer (Inno Setup)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}"
+          if ($version -match '^v(.+)$') {
+            $version = $Matches[1]
+          } else {
+            $version = (cargo metadata --no-deps --format-version 1 | ConvertFrom-Json).packages |
+              Where-Object name -eq 'ps3pad' |
+              Select-Object -ExpandProperty version
+          }
+          Write-Host "Building PS3Pad installer $version"
+
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) {
+            $iscc = (Get-ChildItem "${env:ProgramFiles(x86)}\Inno Setup*\ISCC.exe" |
+              Select-Object -First 1).FullName
+          }
+          if (-not $iscc) {
+            throw "ISCC.exe (Inno Setup) not found"
+          }
+
+          New-Item -ItemType Directory -Force dist | Out-Null
+          & $iscc "/DMyAppVersion=$version" "installer\windows\ps3pad.iss"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Get-ChildItem dist
+
       - name: Package macOS individual targets + universal
         if: runner.os == 'macOS' && matrix.target == 'universal'
         run: |
@@ -138,6 +166,7 @@ jobs:
           name: ${{ matrix.artifact }}
           path: |
             ${{ matrix.artifact }}
+            dist/ps3pad-windows-x86_64-setup.exe
             ps3pad-linux-udev.tar.gz
             ps3pad-macos-x86_64.tar.gz
             ps3pad-macos-aarch64.tar.gz

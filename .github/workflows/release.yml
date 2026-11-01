@@ -187,10 +187,12 @@ jobs:
 
           New-Item -ItemType Directory -Force dist | Out-Null
           Write-Host "Running ISCC..."
-          $output = & $iscc "/DMyAppVersion=$version" "$issFile" 2>&1
-          Write-Host $output
+          $outputFile = Join-Path $env:TEMP "iscc_output.log"
+          & $iscc "/DMyAppVersion=$version" "$issFile" > $outputFile 2>&1
           $isccExitCode = $LASTEXITCODE
-          Write-Host "ISCC exit code: $isccExitCode"
+          Write-Host "=== ISCC output ==="
+          Get-Content $outputFile
+          Write-Host "=== ISCC exit code: $isccExitCode ==="
           if ($isccExitCode -ne 0) { exit $isccExitCode }
           Get-ChildItem dist
 
